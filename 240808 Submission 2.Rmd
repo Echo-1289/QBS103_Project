@@ -1,0 +1,119 @@
+---
+title: "240807 Submission 2"
+output: pdf_document
+date: "2024-08-07"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Submission 2
+1.Build a function to create the plots you made for Presentation 1, incorporating feedback you received from your first presentation on improving plot design. Your functions should take the following input: (1) the name of the data frame, (2) a list of 1 or more gene names, (3) 1 continuous covariate, and (4) two categorical covariates (10 pts)
+```{r}
+library(tidyverse)
+library(dplyr)
+```
+
+```{r}
+makePlot<-function(dataSet,geneName,Cont,Cat1,Cat2){
+  metadata<-read.csv(file="QBS103_GSE157103_series_matrix.csv",header=T,stringsAsFactors=F)
+  
+  #initialize an empty list to store the plots
+  plots<-list()
+  
+  for (gene in geneName){
+
+    #using 'which' to select the chosen gene and identify it
+    gene_selected<-dataSet[which(dataSet[,1]==gene),]
+    
+    #use pipe and merge to convert the gene expression to required format and link two dataframes
+    gene_selected<-gene_selected %>%
+      gather(key=participant_id,value=expression)
+    linked_data<-merge(metadata,gene_selected)
+    
+    #change the gene expression of the linked data frame into numeric type
+    linked_data$expression<-as.numeric(linked_data$expression)
+    linked_data$ddimer.mg.l_feu.<-as.numeric(linked_data$ddimer.mg.l_feu.)
+    
+    #generate the histogram plot
+    p1<-ggplot(linked_data,aes(expression))+
+      geom_histogram(fill='lightblue',color='#694F8E')+
+      scale_x_continuous(breaks = seq(0,100,by=1)) +
+      labs(title=paste0("Gene Expression of ",gene),x=gene,y='Count')+
+      theme_classic()+
+      theme(
+        plot.title=element_text(hjust=0.5,size=20,face='bold'),
+        axis.title.x = element_text(size = 12, face = "bold"),  
+        axis.title.y = element_text(size = 12, face = "bold")
+      )
+      
+    # Set x-axis to display specified ticks
+    breaks <- seq(0, 200, by = 5)  # Display every 5 ticks
+    
+    #generate the scatterplot and do customization
+    p2<-ggplot(linked_data,aes(y=expression,x=ddimer.mg.l_feu.))+
+      geom_point(color='darkblue')+
+      scale_x_continuous(breaks = breaks) +
+      labs(title=paste0('Scatterplot for ',gene,' and ddimer'),y=gene,x='ddimer(mg/L_feu)')+
+      theme_classic()+
+      theme(
+        plot.title = element_text(hjust = 0.5, size = 20, face = "bold"),
+        axis.title.x = element_text(size = 12, face = "bold"),  
+        axis.title.y = element_text(size = 12, face = "bold"),  
+        #turn a angle to avoid overlapping
+        axis.text.x = element_text(size = 8, angle = 45, hjust = 1), 
+        axis.text.y = element_text(size = 10)
+        )
+
+    #generate the boxplot 
+    p3<-ggplot(linked_data,aes(x=sex,y=expression,fill=icu_status))+
+      geom_boxplot(outlier.shape = NA)+
+      labs(title=paste0("Boxplot of ",gene," Expression separated by ",Cat1," and ",Cat2),
+       x=Cat1,
+       y=gene)+
+      stat_summary(fun = mean, geom = "point", shape = 20, size = 3, color = "#A94438", 
+                   position = position_dodge(width = 0.75))+
+      scale_fill_manual(values=c(" yes"='#EED3D9'," no"='#B5C0D0'))+
+      theme_classic()+
+      theme(
+        plot.title = element_text(hjust = 0.5, size = 15, face = "bold"),
+        axis.title.x = element_text(size = 12, face = "bold"),  
+        axis.title.y = element_text(size = 12, face = "bold"),  
+        axis.text.x = element_text(size = 10), 
+        axis.text.y = element_text(size = 10),
+        legend.title = element_text(size = 12),  
+        legend.text = element_text(size = 10),
+        legend.position ="top"
+      )
+    
+    #add the three plots into the list according to its input gene name
+    plots[[gene]] <- list(histogram = p1, scatter = p2, boxplot = p3)
+    }
+    
+    return(plots)
+}
+
+```
+
+
+2.Select 2 additional genes (for a total of 3 genes) to look at and implement a loop to generate your figures using the function you created (10 pts)
+```{r}
+setwd("E:/55555 Dartmouth QBS/QBS 103 Foundation of DS(R)/Project")
+genes_expression<-read.csv(file="QBS103_GSE157103_genes.csv",header=T,stringsAsFactors=F)
+
+# Specify genes of interest
+genes <- c('AAK1', 'A1BG', 'AAAS') 
+
+# Generate plots
+plots <- makePlot(dataSet=genes_expression, geneName=genes, Cont='ddimer.mg.l_feu.', 
+                  Cat1='sex',
+                  Cat2='icu_status')
+
+# Display the plots
+for (gene in names(plots)) {
+  print(plots[[gene]]$histogram)
+  print(plots[[gene]]$scatter)
+  print(plots[[gene]]$boxplot)
+}
+```
